@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
-DB_PATH = Path("data/events.db")
+DB_PATH = Path("data/gigs.db")
 SCHEMA_VERSION = 1
 
 
