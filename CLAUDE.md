@@ -1,23 +1,27 @@
 # gig-ops
 
-AI-powered gig search system for a caricature artist. Finds festivals, conferences, and events in Denmark, locates the right contact person, and generates personalized outreach emails.
+AI-powered gig search system for a caricature artist. Finds festivals, conferences, and events in Denmark, locates the
+right contact person, and generates personalized outreach emails.
 
 Built on Claude Code with a Python-first stack. Inspired by the career-ops architecture.
 
-**This is a single-user tool for Dagmar.** Not a product, not multi-tenant, no scale concerns. Architectural decisions reflect that.
+**This is a single-user tool for Dagmar.** Not a product, not multi-tenant, no scale concerns. Architectural decisions
+reflect that.
 
 ---
 
 ## What This Does
 
 Dagmar is a caricature artist based in Odense, Denmark. She offers:
+
 - **Live caricatures** at events, festivals, corporate parties, weddings
 - **Studio portraits** (pastel, charcoal)
 - **Animal portraits**
 
 Her website: https://dagmarstudio.dk
 
-She currently finds gigs manually — browsing festival websites and event listings, then writing outreach emails herself. gig-ops automates this pipeline.
+She currently finds gigs manually — browsing festival websites and event listings, then writing outreach emails herself.
+gig-ops automates this pipeline.
 
 ---
 
@@ -39,7 +43,8 @@ Mail Generator      ← writes a personalized outreach email (DK or EN)
 Outreach Tracker    ← records everything in events.db
 ```
 
-**Pipeline order matters.** Evaluation runs *before* contact lookup, so events scored D/F are dropped before spending Crawl4AI/Tavily calls on finding their organizer. This typically cuts contact-lookup work by 50–70%.
+**Pipeline order matters.** Evaluation runs *before* contact lookup, so events scored D/F are dropped before spending
+Crawl4AI/Tavily calls on finding their organizer. This typically cuts contact-lookup work by 50–70%.
 
 **Human-in-the-loop is intentional.** gig-ops never sends emails automatically. Dagmar always reviews and sends herself.
 
@@ -47,27 +52,32 @@ Outreach Tracker    ← records everything in events.db
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.12+ (src layout, uv package manager) |
-| CLI | Typer |
-| Terminal UI | Textual (dashboard) |
-| Web scraping | Crawl4AI (handles JS, dynamic content) |
-| AI | Anthropic SDK (claude-sonnet-4-5 or latest) |
-| Search | Tavily API (primary), Perplexity (deep research mode) |
-| Config | PyYAML |
-| Data | SQLite (events.db) + Markdown (mail drafts) |
+| Layer        | Technology                                                 |
+|--------------|------------------------------------------------------------|
+| Language     | Python 3.12+ (src layout, uv package manager)              |
+| CLI          | Typer                                                      |
+| Terminal UI  | Textual (dashboard)                                        |
+| Web scraping | Crawl4AI (handles JS, dynamic content)                     |
+| AI           | Anthropic SDK (claude-sonnet-4-5 or latest)                |
+| Search       | Tavily API (primary), Perplexity (deep research mode)      |
+| Config       | PyYAML                                                     |
+| Data         | SQLite (events.db) + Markdown (mail drafts)                |
 | Search index | SQLite FTS5 (built-in, for keyword search over event text) |
 
 **No Go. No Node.js.** Everything is Python.
 
 ### Why SQLite, not Postgres
 
-Single-user, single-writer, no network access. Postgres would be operational overhead solving problems we don't have. SQLite with WAL mode handles concurrent dashboard reads + scanner writes fine. Backup is `cp events.db backup/`. If the project ever needs Postgres (multi-user web app), the SQL is portable enough that migration is an afternoon, not a rewrite.
+Single-user, single-writer, no network access. Postgres would be operational overhead solving problems we don't have.
+SQLite with WAL mode handles concurrent dashboard reads + scanner writes fine. Backup is `cp events.db backup/`. If the
+project ever needs Postgres (multi-user web app), the SQL is portable enough that migration is an afternoon, not a
+rewrite.
 
 ### Why no vector database
 
-Scale is too small (hundreds of events), queries are mostly structured, and SQLite FTS5 covers keyword search at zero added complexity. Revisit only when there's a real RAG use case (e.g. retrieval over past successful emails after 20+ bookings). At that point, `sqlite-vec` extension keeps everything in one database — no second storage layer needed.
+Scale is too small (hundreds of events), queries are mostly structured, and SQLite FTS5 covers keyword search at zero
+added complexity. Revisit only when there's a real RAG use case (e.g. retrieval over past successful emails after 20+
+bookings). At that point, `sqlite-vec` extension keeps everything in one database — no second storage layer needed.
 
 ---
 
@@ -137,7 +147,8 @@ gig-ops/
 └── .gitignore
 ```
 
-**Slash commands wrap CLI, not duplicate logic.** Each `.claude/commands/*.md` calls the corresponding `uv run gig-ops ...` command via `!` execution. One source of truth.
+**Slash commands wrap CLI, not duplicate logic.** Each `.claude/commands/*.md` calls the corresponding
+`uv run gig-ops ...` command via `!` execution. One source of truth.
 
 ---
 
@@ -170,7 +181,9 @@ uv run gig-ops suppress <email|domain>       # add to do-not-contact list
 
 ## Event Evaluation (Multi-Dimensional Scoring)
 
-The evaluator does **not** return a single A–F directly. It scores each dimension separately, stores all scores in the database, and only then aggregates to a final A–F. This makes it possible to spot evaluator hallucinations (e.g. "audience size = 5000" when no such info exists in the source).
+The evaluator does **not** return a single A–F directly. It scores each dimension separately, stores all scores in the
+database, and only then aggregates to a final A–F. This makes it possible to spot evaluator hallucinations (e.g. "
+audience size = 5000" when no such info exists in the source).
 
 Dimensions:
 
@@ -187,17 +200,22 @@ Dimensions:
 **Score F** = not worth pursuing.
 **Recommend against contacting anything below C.**
 
-Each dimension score must reference a specific scraped fact (a URL or quoted text). No supporting fact = score that dimension as `unknown`, **not** as a guess.
+Each dimension score must reference a specific scraped fact (a URL or quoted text). No supporting fact = score that
+dimension as `unknown`, **not** as a guess.
 
 ---
 
 ## Source Citations (Mandatory)
 
-Every fact extracted from external sources by AI — organizer name, email, audience size, date, event type — **must** be paired with the source URL it came from. The evaluator and contact finder enforce this in their prompts (`modes/evaluate.md`, `modes/contact.md`).
+Every fact extracted from external sources by AI — organizer name, email, audience size, date, event type — **must** be
+paired with the source URL it came from. The evaluator and contact finder enforce this in their prompts (
+`modes/evaluate.md`, `modes/contact.md`).
 
-**If a fact has no citation, it is not written to the database.** This is the primary defense against hallucinated organizers and fabricated event details.
+**If a fact has no citation, it is not written to the database.** This is the primary defense against hallucinated
+organizers and fabricated event details.
 
-The mail generator receives the **full scraped text** of the event page as context, not just the event name. If it lacks a concrete detail to reference, it writes a slightly more generic email — never invented details.
+The mail generator receives the **full scraped text** of the event page as context, not just the event name. If it lacks
+a concrete detail to reference, it writes a slightly more generic email — never invented details.
 
 ---
 
@@ -213,7 +231,8 @@ The mail generator receives the **full scraped text** of the event page as conte
 - End with a clear but soft call to action ("Er der mulighed for at høre mere?")
 - Never use generic templates that sound copy-pasted
 
-For each event, the mailer generates **2–3 variants** so Dagmar can pick. At her scale, the API cost is trivial and the quality lift is real.
+For each event, the mailer generates **2–3 variants** so Dagmar can pick. At her scale, the API cost is trivial and the
+quality lift is real.
 
 ---
 
@@ -221,15 +240,22 @@ For each event, the mailer generates **2–3 variants** so Dagmar can pick. At h
 
 Operating in Denmark/EU. Non-negotiable:
 
-1. **No LinkedIn scraping.** Against their ToS, against GDPR, risk of account ban. LinkedIn may be used for **manual** research only, never via Crawl4AI.
+1. **No LinkedIn scraping.** Against their ToS, against GDPR, risk of account ban. LinkedIn may be used for **manual**
+   research only, never via Crawl4AI.
 
-2. **B2B only by default.** Cold outreach to companies, festivals, and event organizers under legitimate interest is defensible. **B2C outreach (private weddings, individuals) is excluded** unless there is a clear public business contact.
+2. **B2B only by default.** Cold outreach to companies, festivals, and event organizers under legitimate interest is
+   defensible. **B2C outreach (private weddings, individuals) is excluded** unless there is a clear public business
+   contact.
 
-3. **Suppression list is mandatory.** Anyone who replies "not interested," anyone Dagmar manually flags, and any domain marked do-not-contact goes into the `suppression` table. **Every scan and every mail action checks suppression first.** No exceptions.
+3. **Suppression list is mandatory.** Anyone who replies "not interested," anyone Dagmar manually flags, and any domain
+   marked do-not-contact goes into the `suppression` table. **Every scan and every mail action checks suppression first.
+   ** No exceptions.
 
-4. **Opt-out line in every email.** A single sentence, e.g.: *"Hvis du foretrækker ikke at modtage flere henvendelser fra mig, så lad mig venligst vide det, og jeg fjerner dig fra min liste."*
+4. **Opt-out line in every email.** A single sentence, e.g.: *"Hvis du foretrækker ikke at modtage flere henvendelser
+   fra mig, så lad mig venligst vide det, og jeg fjerner dig fra min liste."*
 
-5. **Email verification.** Before saving an extracted email as `organizer_email`, run an MX-record check on the domain. Hallucinated emails or addresses on dead domains never reach the tracker.
+5. **Email verification.** Before saving an extracted email as `organizer_email`, run an MX-record check on the domain.
+   Hallucinated emails or addresses on dead domains never reach the tracker.
 
 ---
 
@@ -285,9 +311,12 @@ Transitions enforced in `tracker.py`. No direct status writes from elsewhere.
 ### SQLite settings
 
 ```python
-PRAGMA journal_mode = WAL;       # concurrent reads during writes
-PRAGMA foreign_keys = ON;         # enforce FK constraints
-PRAGMA synchronous = NORMAL;      # safe with WAL, faster
+PRAGMA
+journal_mode = WAL;  # concurrent reads during writes
+PRAGMA
+foreign_keys = ON;  # enforce FK constraints
+PRAGMA
+synchronous = NORMAL;  # safe with WAL, faster
 ```
 
 **Backup:** `cp data/events.db data/backups/events-$(date +%Y%m%d).db` daily via launchd.
@@ -305,17 +334,24 @@ updated: 2025-11-15
 ---
 ```
 
-When the evaluator, contact finder, or mailer runs, it records the version of the mode file used into `events.mode_versions_json`. This makes it possible to look at any AI output later and know exactly which prompt produced it. Without this, debugging "why did the mails suddenly start sounding weird in November?" is guesswork. **Bump the version on every meaningful edit.**
+When the evaluator, contact finder, or mailer runs, it records the version of the mode file used into
+`events.mode_versions_json`. This makes it possible to look at any AI output later and know exactly which prompt
+produced it. Without this, debugging "why did the mails suddenly start sounding weird in November?" is guesswork. **Bump
+the version on every meaningful edit.**
 
 ---
 
 ## Reply Handling
 
-For v1: **manual marking in the TUI dashboard.** When Dagmar gets a reply in her inbox, she opens the dashboard, finds the event, and marks `REPLIED` (with optional outcome: `BOOKED` / `REJECTED`).
+For v1: **manual marking in the TUI dashboard.** When Dagmar gets a reply in her inbox, she opens the dashboard, finds
+the event, and marks `REPLIED` (with optional outcome: `BOOKED` / `REJECTED`).
 
-This is a small friction point but the only option that doesn't require building IMAP integration or routing all of Dagmar's mail through a sending service. The `followup` mode reads the `replies` table — if no reply within N days, suggest a follow-up; if there is, skip.
+This is a small friction point but the only option that doesn't require building IMAP integration or routing all of
+Dagmar's mail through a sending service. The `followup` mode reads the `replies` table — if no reply within N days,
+suggest a follow-up; if there is, skip.
 
-Future option (only if the friction becomes painful): IMAP polling against Dagmar's inbox with subject-line/thread matching against event names.
+Future option (only if the friction becomes painful): IMAP polling against Dagmar's inbox with subject-line/thread
+matching against event names.
 
 ---
 
@@ -324,6 +360,7 @@ Future option (only if the friction becomes painful): IMAP polling against Dagma
 ### Tavily (primary scanner)
 
 Used for broad discovery queries like:
+
 - `"festival Danmark 2025 underholdning"`
 - `"firmafest Fyn 2025"`
 - `"konference Odense 2025"`
@@ -334,6 +371,7 @@ Free tier (~1000 calls/month) is more than enough for this project's volume.
 ### Crawl4AI (deep scraping)
 
 Used for:
+
 - Eventbrite Denmark (public events)
 - Facebook Events (public pages only)
 - Specific portal sites defined in `portals.yml`
@@ -343,6 +381,7 @@ Used for:
 ### portals.yml (regular scans)
 
 A curated list of Danish event listing sites to check regularly:
+
 - visitfyn.dk/events
 - odense.dk/oplevelser/arrangementer
 - eventbrite.dk
@@ -370,7 +409,9 @@ Single-user side project. Realistic monthly cost:
 - **Anthropic API:** ~70 DKK at 200 events/month, halved further by evaluate-first ordering
 - **Crawl4AI:** 0 DKK (self-hosted)
 
-**~70 DKK/month total.** No token logging, no cost dashboards, no caching needed. If costs ever start to matter, that means Dagmar is doing way more outreach than human-in-the-loop can sustain — at which point the constraint isn't budget, it's her time.
+**~70 DKK/month total.** No token logging, no cost dashboards, no caching needed. If costs ever start to matter, that
+means Dagmar is doing way more outreach than human-in-the-loop can sustain — at which point the constraint isn't budget,
+it's her time.
 
 ---
 
@@ -378,12 +419,16 @@ Single-user side project. Realistic monthly cost:
 
 1. **Never send emails automatically.** Always save as draft, let Dagmar review.
 2. **Quality over quantity.** Better to find 5 great events than 50 mediocre ones.
-3. **Personalization is everything, but never invented.** A generic email is worse than no email; a fabricated email is worse than a generic one.
-4. **Dagmar's time is the constraint.** She can realistically handle 3–5 new outreach emails per week. Optimize for *her* time.
-5. **modes/*.md files are the source of truth for AI behavior.** Edit them to tune how Claude evaluates and writes. Bump version on every change.
+3. **Personalization is everything, but never invented.** A generic email is worse than no email; a fabricated email is
+   worse than a generic one.
+4. **Dagmar's time is the constraint.** She can realistically handle 3–5 new outreach emails per week. Optimize for
+   *her* time.
+5. **modes/*.md files are the source of truth for AI behavior.** Edit them to tune how Claude evaluates and writes. Bump
+   version on every change.
 6. **Source citations or no fact.** AI-extracted information without a source URL doesn't get written to the database.
 7. **Suppression list is checked first, always.** Before scan dedup, before contact lookup, before mail generation.
-8. **The system is designed to be adapted by Claude itself.** If Dagmar says "focus more on corporate events" or "I don't do weddings anymore," update `profile.yml` and `_shared.md`.
+8. **The system is designed to be adapted by Claude itself.** If Dagmar says "focus more on corporate events" or "I
+   don't do weddings anymore," update `profile.yml` and `_shared.md`.
 
 ---
 
@@ -409,29 +454,34 @@ Single-user side project. Realistic monthly cost:
 - Database: SQLite with WAL mode, accessed via stdlib `sqlite3` or SQLAlchemy core (no ORM — overkill for this size)
 - Textual dashboard runs as a separate command (`uv run gig-ops tracker`)
 - Tests in `tests/` (pytest), including:
-  - **Snapshot tests** for mode prompt outputs (catch unintended drift)
-  - **Evaluator eval set** — labeled events with expected A–F scores; regression-test the evaluator when modes change
-  - **Suppression check** — every code path that contacts an organizer must pass through suppression filter
+    - **Snapshot tests** for mode prompt outputs (catch unintended drift)
+    - **Evaluator eval set** — labeled events with expected A–F scores; regression-test the evaluator when modes change
+    - **Suppression check** — every code path that contacts an organizer must pass through suppression filter
 
 ---
 
 ## Review Comments / Suggested Improvements
 
-These notes are not blockers. The overall design is solid and well-scoped for a single-user, human-in-the-loop outreach tool. The following points are recommended clarifications before implementation.
+These notes are not blockers. The overall design is solid and well-scoped for a single-user, human-in-the-loop outreach
+tool. The following points are recommended clarifications before implementation.
 
 ### 1. Treat Facebook Events as best-effort only
 
-The document allows Crawl4AI for Facebook Events public pages. This should be handled carefully because Facebook is technically brittle and may restrict automated access.
+The document allows Crawl4AI for Facebook Events public pages. This should be handled carefully because Facebook is
+technically brittle and may restrict automated access.
 
 Suggested clarification:
 
 ```md
-Facebook Events are best-effort only. Do not bypass login, rate limits, bot protection, or access controls. Prefer public organizer websites over Facebook pages when available.
+Facebook Events are best-effort only. Do not bypass login, rate limits, bot protection, or access controls. Prefer
+public organizer websites over Facebook pages when available.
 ```
 
 ### 2. Clarify what `email_verified` means
 
-The current GDPR/legal section says extracted emails should pass an MX-record check before being saved as `organizer_email`. This is useful, but MX verification only proves that the domain can receive email. It does **not** prove that the specific mailbox exists.
+The current GDPR/legal section says extracted emails should pass an MX-record check before being saved as
+`organizer_email`. This is useful, but MX verification only proves that the domain can receive email. It does **not**
+prove that the specific mailbox exists.
 
 Suggested clarification:
 
@@ -449,7 +499,8 @@ This would avoid overpromising what the verification step actually proves.
 
 ### 3. Avoid two sources of truth for suppression
 
-The project structure includes `suppression.yml`, while the database schema also includes a `suppression` table. This can become ambiguous unless the responsibility of each is clearly defined.
+The project structure includes `suppression.yml`, while the database schema also includes a `suppression` table. This
+can become ambiguous unless the responsibility of each is clearly defined.
 
 Recommended approach:
 
@@ -460,12 +511,14 @@ Recommended approach:
 Suggested clarification:
 
 ```md
-suppression.yml is optional seed/config input. The SQLite suppression table is the runtime source of truth. All operational checks use the database table.
+suppression.yml is optional seed/config input. The SQLite suppression table is the runtime source of truth. All
+operational checks use the database table.
 ```
 
 ### 4. Add an explicit deduplication strategy
 
-Events will appear from multiple sources: Tavily, Eventbrite, municipal portals, organizer websites, and possibly listing aggregators. Without a dedup rule, the tracker may quickly collect duplicate events.
+Events will appear from multiple sources: Tavily, Eventbrite, municipal portals, organizer websites, and possibly
+listing aggregators. Without a dedup rule, the tracker may quickly collect duplicate events.
 
 Suggested rule:
 
@@ -513,12 +566,14 @@ source_confidence
 Suggested rule:
 
 ```md
-AI-generated mails should not be created from low-confidence search snippets alone. Low-confidence events must be confirmed by crawling an event page or organizer page first.
+AI-generated mails should not be created from low-confidence search snippets alone. Low-confidence events must be
+confirmed by crawling an event page or organizer page first.
 ```
 
 ### 6. Add minimal run metadata logging
 
-The cost reality section says no token logging, no cost dashboards, and no caching needed. That is reasonable. However, minimal operational run logging would still be useful for debugging scanner/evaluator behavior.
+The cost reality section says no token logging, no cost dashboards, and no caching needed. That is reasonable. However,
+minimal operational run logging would still be useful for debugging scanner/evaluator behavior.
 
 Suggested table:
 
@@ -544,7 +599,8 @@ This does not need to track tokens or cost. It only answers questions like:
 
 ### 7. Rename or narrow the `Contactability` evaluation dimension
 
-The pipeline intentionally evaluates events before running contact lookup. But the evaluation dimensions currently include:
+The pipeline intentionally evaluates events before running contact lookup. But the evaluation dimensions currently
+include:
 
 > Contactability — is there a named organizer with a reachable email?
 
@@ -556,7 +612,8 @@ Recommended rename:
 Visible contact signal — does the scanned page mention an organizer, contact page, or contact email?
 ```
 
-Then, after the Contact Finder runs, the system can store actual contactability based on whether it found a usable organizer name/email.
+Then, after the Contact Finder runs, the system can store actual contactability based on whether it found a usable
+organizer name/email.
 
 Suggested distinction:
 
@@ -565,7 +622,8 @@ Suggested distinction:
 
 ### 8. Make year-based search queries dynamic
 
-The Tavily query examples currently include hardcoded `2025`. Search queries should be generated dynamically using the current year and next year.
+The Tavily query examples currently include hardcoded `2025`. Search queries should be generated dynamically using the
+current year and next year.
 
 Suggested clarification:
 
@@ -584,19 +642,22 @@ Example:
 
 ### 9. Keep the human-in-the-loop boundary explicit everywhere
 
-The document already says emails are never sent automatically. This is important enough that it should also be reflected in command behavior and status transitions.
+The document already says emails are never sent automatically. This is important enough that it should also be reflected
+in command behavior and status transitions.
 
 Suggested clarification:
 
 ```md
-The system may generate mail drafts and mark them as MAIL_DRAFTED, but only a human can mark an outreach as SENT. No CLI command or slash command may send email directly.
+The system may generate mail drafts and mark them as MAIL_DRAFTED, but only a human can mark an outreach as SENT. No CLI
+command or slash command may send email directly.
 ```
 
 This keeps the safety boundary visible both architecturally and operationally.
 
 ### 10. Consider adding a `needs_review` flag
 
-Some events will be ambiguous: maybe the event is relevant, but the source is weak, contact info is unclear, or the AI score has unknown dimensions.
+Some events will be ambiguous: maybe the event is relevant, but the source is weak, contact info is unclear, or the AI
+score has unknown dimensions.
 
 Suggested schema addition:
 
@@ -619,7 +680,8 @@ This helps keep the dashboard focused and prevents borderline cases from silentl
 
 ### 11. Define B2B/B2C classification more concretely
 
-The GDPR section says B2B is default and B2C/private weddings are excluded unless there is a clear public business contact. This is good. It may help to encode this into event metadata.
+The GDPR section says B2B is default and B2C/private weddings are excluded unless there is a clear public business
+contact. This is good. It may help to encode this into event metadata.
 
 Possible values:
 
@@ -640,12 +702,14 @@ Events classified as private_individual or unknown should not proceed to mail ge
 
 ### 12. Keep scraped text retention modest
 
-The schema stores `raw_scraped_text`. This is valuable for grounding, but it is worth keeping retention modest and purposeful.
+The schema stores `raw_scraped_text`. This is valuable for grounding, but it is worth keeping retention modest and
+purposeful.
 
 Suggested clarification:
 
 ```md
-Store only event-relevant scraped text needed for citations, evaluation, and mail grounding. Avoid storing unrelated page content, personal profiles, comments, or social media discussion threads.
+Store only event-relevant scraped text needed for citations, evaluation, and mail grounding. Avoid storing unrelated
+page content, personal profiles, comments, or social media discussion threads.
 ```
 
 This aligns well with the existing GDPR posture.
@@ -669,10 +733,58 @@ None of these change the overall architecture. They mainly make the existing des
 
 ---
 
+## Architecture Decisions
+
+Decisions made during development. Record here so future sessions don't relitigate settled choices.
+
+### Light DDD over flat functions
+
+The codebase moved from a flat-function style to a light Domain-Driven Design structure:
+
+```
+src/gig_ops/
+  domain/        # pure data models (Event, Contact, MailDraft) — no I/O
+  protocol/      # Python Protocols (structural interfaces) — no ABCs
+  infrastructure/sqlite/  # SQLite implementations of the protocols
+```
+
+**Why:** Protocols make unit testing trivial — any object that matches the shape works, no `unittest.mock.patch` needed.
+The domain layer stays free of database concerns. This is the right level of structure for a project this size; a full
+DDD with aggregates/repositories/services would be over-engineering.
+
+**Rule:** Keep domain models pure (no imports from `db`, `infrastructure`, or `protocol`). Infrastructure depends on
+domain, never the reverse.
+
+### Protocols over ABCs
+
+`protocol/repository.py` defines `Repository` as a `typing.Protocol`, not an `ABC`.
+
+**Why:** `Protocol` supports structural subtyping — test doubles don't need to inherit from anything. `ABC` would force
+every mock/stub to explicitly subclass, adding coupling with no benefit at this scale.
+
+### MCP: deferred, but protocol-ready
+
+The `deep` mode (deep research on a specific event/organizer) is a candidate for MCP (Model Context Protocol) tooling —
+it involves multi-step browsing, research, and synthesis where MCP's tool-calling architecture fits well.
+
+Tavily (primary scanner) stays as a direct API call for now — the volume and simplicity don't justify MCP overhead.
+
+**The protocol layer keeps this option open.** If MCP is added later (e.g. for deep mode), it plugs in as a new
+`infrastructure/mcp/` implementation of the same `Repository` protocol. No domain or CLI changes needed.
+
+**Rule:** Do not add MCP for Tavily or standard scanning. Revisit MCP only for `deep` mode if/when deep research becomes
+a bottleneck.
+
+---
+
 ## Collaboration Rules (AI assistant instructions)
 
-- **Run `make check` after every batch of changes.** This runs lint (ruff), type checking (pyright), and tests (pytest, excluding slow). Fix all issues before considering a batch done.
-- **Write pytest tests for new code where it makes sense.** Keep tests basic — unit tests over logic, not over-engineered fixtures. Mark slow/integration tests with `@pytest.mark.slow`.
+- **Run `make check` after every batch of changes.** This runs lint (ruff), type checking (pyright), and tests (pytest,
+  excluding slow). Fix all issues before considering a batch done.
+- **Write pytest tests for new code where it makes sense.** Keep tests basic — unit tests over logic, not
+  over-engineered fixtures. Mark slow/integration tests with `@pytest.mark.slow`.
 - **Work directly in the project.** Do not create git worktrees. Edit files in place.
-- **Never commit.** Only the user commits. Do not run `git commit`, `git push`, or any destructive git commands.
-- **Commit frequently (by the user).** After each meaningful batch of work is complete and `make check` passes, the user commits. Batches should be small and focused.
+- **Commit and push after each meaningful batch.** Use conventional commit prefixes: `feat`, `fix`, `chore`, `refactor`,
+  `test`, `docs`. Keep messages concise. Do not amend published commits.
+- **The user handles branching and rebase.** Do not create branches, rebase, or force-push. Commit to the current branch
+  and push — that's it.
