@@ -666,3 +666,13 @@ Highest-priority edits before implementation:
 8. Add `needs_review` for ambiguous or weakly sourced events.
 
 None of these change the overall architecture. They mainly make the existing design safer, clearer, and easier to debug.
+
+---
+
+## Collaboration Rules (AI assistant instructions)
+
+- **Run `make check` after every batch of changes.** This runs lint (ruff), type checking (pyright), and tests (pytest, excluding slow). Fix all issues before considering a batch done.
+- **Write pytest tests for new code where it makes sense.** Keep tests basic — unit tests over logic, not over-engineered fixtures. Mark slow/integration tests with `@pytest.mark.slow`.
+- **Work directly in the project.** Do not create git worktrees. Edit files in place.
+- **Never commit.** Only the user commits. Do not run `git commit`, `git push`, or any destructive git commands.
+- **Commit frequently (by the user).** After each meaningful batch of work is complete and `make check` passes, the user commits. Batches should be small and focused.

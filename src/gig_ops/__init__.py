@@ -1,2 +1,5 @@
+from gig_ops.cli import app
+
+
 def main() -> None:
-    print("Hello from gig-ops!")
+    app()
