@@ -1,0 +1,17 @@
+[project]
+name = "gig-ops"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Pavel Krusek", email = "pavel@krusek.dk" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+gig-ops = "gig_ops:main"
+
+[build-system]
+requires = ["uv_build>=0.11.9,<0.12.0"]
+build-backend = "uv_build"
