@@ -15,3 +15,5 @@ wheels/
 
 # Runtime data
 data/
+
+.screenshots
