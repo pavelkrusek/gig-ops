@@ -33,20 +33,83 @@ def scan(source: str = typer.Option("tavily", help="Source to scan: tavily | all
 
 
 @app.command()
-def evaluate(event_name: str = typer.Argument(..., help="Event name to evaluate")) -> None:
-    """Score an event A–F."""
+def evaluate(
+    event_name: Optional[str] = typer.Argument(None, help="Event name (omit to evaluate all NEW events)"),
+) -> None:
+    """Score an event A–F. Without argument, evaluates all NEW events."""
     from gig_ops.evaluate import evaluate_event
-    typer.echo(f"Evaluating: {event_name}…")
-    result = evaluate_event(event_name)
-    if result is None:
-        typer.echo("Event not found.", err=True)
-        raise typer.Exit(1)
-    typer.echo(f"Score: {result['score_final']}")
-    for dim, data in result["dimensions"].items():
-        if dim == "reasoning":
+    from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
+
+    repo = SQLiteRepository()
+
+    if event_name:
+        found = repo.find_event(event_name)
+        if not found:
+            typer.echo(f"No event matching '{event_name}'.", err=True)
+            raise typer.Exit(1)
+        events = [found]
+    else:
+        events = repo.list_events(status="NEW")
+        if not events:
+            typer.echo("No NEW events to evaluate.")
+            return
+        typer.echo(f"Evaluating {len(events)} NEW events…")
+
+    ok = skipped = 0
+    for event in events:
+        if event is None:
             continue
-        score = data["score"] if isinstance(data, dict) else data
-        typer.echo(f"  {dim}: {score}")
+        typer.echo(f"  {event.name[:60]}…", nl=False)
+        result = evaluate_event(event.name, repo=repo)
+        if result:
+            reasoning = result["dimensions"].get("reasoning", "")
+            typer.echo(f" {result['score_final']} — {reasoning}")
+            if event_name:
+                for dim, data in result["dimensions"].items():
+                    if dim == "reasoning":
+                        continue
+                    score = data.get("score", "?") if isinstance(data, dict) else data
+                    citation = data.get("citation") if isinstance(data, dict) else None
+                    line = f"    {dim}: {score}"
+                    if citation:
+                        line += f"  ({citation[:80]})"
+                    typer.echo(line)
+            ok += 1
+        else:
+            typer.echo(" error")
+            skipped += 1
+
+    if not event_name:
+        typer.echo(f"Done. Scored: {ok}, errors: {skipped}")
+
+
+@app.command(name="list")
+def list_events(
+    status: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status (NEW, EVALUATED, …)"),
+) -> None:
+    """List events in the database."""
+    from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
+    from rich.table import Table
+    from rich.console import Console
+
+    repo = SQLiteRepository()
+    events = repo.list_events(status=status)
+    if not events:
+        typer.echo("No events found.")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("ID", width=5)
+    table.add_column("Score", width=5)
+    table.add_column("Status", width=14)
+    table.add_column("Name", no_wrap=False)
+    table.add_column("Source", width=8)
+
+    for e in events:
+        table.add_row(str(e.id), e.score_final or "—", e.status, e.name, e.source or "")
+
+    Console().print(table)
+    typer.echo(f"Total: {len(events)}")
 
 
 @app.command()

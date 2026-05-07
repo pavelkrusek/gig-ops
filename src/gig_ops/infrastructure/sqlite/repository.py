@@ -248,6 +248,17 @@ class SQLiteRepository(Repository):
             ).fetchone()
             return _row_to_event(row) if row else None
 
+    def find_event(self, query: str) -> Event | None:
+        with db(self._db_path) as conn:
+            if query.isdigit():
+                row = conn.execute("SELECT * FROM events WHERE id = ?", (int(query),)).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM events WHERE name LIKE ? ORDER BY found_at DESC LIMIT 1",
+                    (f"%{query}%",),
+                ).fetchone()
+            return _row_to_event(row) if row else None
+
     def list_events(self, status: str | None = None) -> list[Event]:
         with db(self._db_path) as conn:
             if status:
