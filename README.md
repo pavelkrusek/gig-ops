@@ -15,6 +15,21 @@ Evaluation runs before contact lookup, so low-scoring events are dropped before 
 
 ---
 
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.12+ (src layout, uv) |
+| CLI | Typer |
+| AI | Anthropic SDK — claude-haiku-4-5 (evaluate, contact, mail) |
+| Web search | Tavily API — event discovery |
+| Web scraping | Crawl4AI — full page scrape for contact finding |
+| Data | SQLite (`data/gigs.db`) + Markdown (mail drafts) |
+| Config | YAML (`profile.yml`, `queries.yml`, `portals.yml`) |
+| AI prompts | Markdown (`modes/`) — versioned, editable without code changes |
+
+---
+
 ## Setup
 
 ```bash
