@@ -10,7 +10,7 @@ class TavilyScanner:
 
     def scan(self, query: str) -> list[ScanResult]:
         logger.info("Tavily scan: {}", query)
-        response = self._client.search(query, max_results=10, include_raw_content=True)
+        response = self._client.search(query, max_results=10, include_raw_content=True, search_depth="advanced")
         results = []
         for item in response.get("results", []):
             results.append(ScanResult(

@@ -10,8 +10,8 @@ app = typer.Typer(name="gig-ops", help="AI-powered gig search for Dagmar.")
 
 @app.callback()
 def configure(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging"),
-    log_file: Optional[str] = typer.Option(None, "--log-file", help="Also write logs to this file"),
+        verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging"),
+        log_file: Optional[str] = typer.Option(None, "--log-file", help="Also write logs to this file"),
 ) -> None:
     logger.remove()
     level = "DEBUG" if verbose else "INFO"
@@ -35,8 +35,18 @@ def scan(source: str = typer.Option("tavily", help="Source to scan: tavily | all
 @app.command()
 def evaluate(event_name: str = typer.Argument(..., help="Event name to evaluate")) -> None:
     """Score an event A–F."""
-    logger.info("Evaluating: {}", event_name)
-    typer.echo(f"Evaluating: {event_name} — not yet implemented")
+    from gig_ops.evaluate import evaluate_event
+    typer.echo(f"Evaluating: {event_name}…")
+    result = evaluate_event(event_name)
+    if result is None:
+        typer.echo("Event not found.", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"Score: {result['score_final']}")
+    for dim, data in result["dimensions"].items():
+        if dim == "reasoning":
+            continue
+        score = data["score"] if isinstance(data, dict) else data
+        typer.echo(f"  {dim}: {score}")
 
 
 @app.command()
@@ -76,8 +86,8 @@ def deep(event_name: str = typer.Argument(..., help="Event or organizer to resea
 
 @app.command()
 def suppress(
-    pattern: str = typer.Argument(..., help="Email or domain to suppress"),
-    reason: str = typer.Option("", "--reason", "-r", help="Optional reason"),
+        pattern: str = typer.Argument(..., help="Email or domain to suppress"),
+        reason: str = typer.Option("", "--reason", "-r", help="Optional reason"),
 ) -> None:
     """Add an email or domain to the do-not-contact list."""
     from gig_ops.infrastructure.sqlite.repository import SQLiteRepository

@@ -1,0 +1,32 @@
+name: Dagmar Krusek
+location: Odense, Denmark
+origin: Czech
+languages: [Danish, English, Czech]
+website: https://dagmarstudio.dk
+
+services:
+  live_caricatures: "Live event caricatures — one portrait ~5 minutes, works crowds at festivals, corporate events, parties"
+  studio_portraits: "Pastel and charcoal portraits, studio or on-site"
+  animal_portraits: "Pet and animal portraits"
+
+rates:
+  private_2h: "from 2,600 DKK (2 hours, private event)"
+  corporate: "from 6,000 DKK (corporate / festival)"
+
+style: "warm, humorous, personal — not formal or academic"
+
+travel:
+  base: Odense
+  radius_free: 50km
+  available: all of Denmark (travel costs added beyond 50km from Odense)
+
+preferred_events:
+  - festivals (music, food, culture, city)
+  - corporate parties and team events
+  - conferences with entertainment budget
+  - trade shows and expos
+  - weddings (B2B vendor side — wedding fairs and venues)
+
+excluded:
+  - private individuals without a public business contact (GDPR — B2C cold outreach not permitted)
+  - purely academic or volunteer events with no entertainment budget
