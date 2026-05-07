@@ -66,6 +66,7 @@ def _row_to_event(row: Any) -> Event:
         score_final=d["score_final"],
         score_dimensions=json.loads(d["score_dimensions_json"]) if d["score_dimensions_json"] else {},
         raw_scraped_text=d["raw_scraped_text"],
+        crawled_text=d.get("crawled_text"),
         source=d["source"],
         source_confidence=d["source_confidence"],
         dedupe_key=d["dedupe_key"],
@@ -223,6 +224,13 @@ class SQLiteRepository(Repository):
                 (event_id, draft_path, language, variant_label, _now(), mode_version),
             )
         self.set_status(event_id, "MAIL_DRAFTED")
+
+    def update_crawled_text(self, event_id: int, crawled_text: str) -> None:
+        with db(self._db_path) as conn:
+            conn.execute(
+                "UPDATE events SET crawled_text = ?, updated_at = ? WHERE id = ?",
+                (crawled_text, _now(), event_id),
+            )
 
     def add_suppression(self, pattern: str, reason: str | None = None) -> None:
         with db(self._db_path) as conn:

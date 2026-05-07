@@ -14,6 +14,7 @@ class Event:
     score_final: str | None = None
     score_dimensions: dict[str, Any] = field(default_factory=dict)
     raw_scraped_text: str | None = None
+    crawled_text: str | None = None
     source: str | None = None
     source_confidence: str | None = None
     dedupe_key: str | None = None

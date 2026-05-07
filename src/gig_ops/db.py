@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Generator
 
 DB_PATH = Path("data/gigs.db")
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _apply_migrations(conn: sqlite3.Connection) -> None:
@@ -84,6 +84,12 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
             CREATE INDEX IF NOT EXISTS idx_events_dedupe  ON events(dedupe_key);
 
             PRAGMA user_version = 1;
+        """)
+
+    if version < 2:
+        conn.executescript("""
+            ALTER TABLE events ADD COLUMN crawled_text TEXT;
+            PRAGMA user_version = 2;
         """)
 
 

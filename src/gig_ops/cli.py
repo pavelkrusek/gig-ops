@@ -113,10 +113,49 @@ def list_events(
 
 
 @app.command()
-def contact(event_name: str = typer.Argument(..., help="Event name to look up organizer for")) -> None:
-    """Find organizer contact for an event (only if score ≥ C)."""
-    logger.info("Finding contact for: {}", event_name)
-    typer.echo(f"Finding contact for: {event_name} — not yet implemented")
+def contact(
+    event_name: Optional[str] = typer.Argument(None, help="Event name or ID (omit to process all A/B/C events)"),
+) -> None:
+    """Find organizer contact. Without argument, processes all scored A/B/C events."""
+    from gig_ops.finder import find_contact, _ELIGIBLE_SCORES
+    from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
+
+    repo = SQLiteRepository()
+
+    if event_name:
+        events_to_process = []
+        found = repo.find_event(event_name)
+        if not found:
+            typer.echo(f"No event matching '{event_name}'.", err=True)
+            raise typer.Exit(1)
+        events_to_process = [found]
+    else:
+        all_evaluated = repo.list_events(status="EVALUATED")
+        events_to_process = [e for e in all_evaluated if e.score_final in _ELIGIBLE_SCORES]
+        if not events_to_process:
+            typer.echo("No eligible events (A/B/C) to process.")
+            return
+        typer.echo(f"Finding contacts for {len(events_to_process)} events…")
+
+    ok = skipped = errors = 0
+    for event in events_to_process:
+        typer.echo(f"  [{event.score_final}] {event.name[:55]}…", nl=False)
+        result = find_contact(str(event.id), repo=repo)
+        if result is None:
+            typer.echo(" not found")
+            errors += 1
+        elif result.get("skipped"):
+            typer.echo(f" skipped ({result.get('reason', '')})")
+            skipped += 1
+        else:
+            name = result.get("organizer_name") or "—"
+            email = result.get("organizer_email") or "—"
+            verified = "✓" if result.get("email_domain_verified") else "?"
+            typer.echo(f" {name} <{email}> {verified}")
+            ok += 1
+
+    if not event_name:
+        typer.echo(f"Done. Found: {ok}, skipped: {skipped}, errors: {errors}")
 
 
 @app.command()

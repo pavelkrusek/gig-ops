@@ -20,6 +20,7 @@ Evaluation runs before contact lookup, so low-scoring events are dropped before 
 ```bash
 cp .env.example .env   # fill in keys
 uv sync
+uv run crawl4ai-setup  # install Playwright browser (needed for contact finder)
 ```
 
 **.env**
@@ -35,14 +36,24 @@ PERPLEXITY_API_KEY=     # optional — deep research mode
 ## Usage
 
 ```bash
-uv run gig-ops scan                          # scan all sources for new events
-uv run gig-ops scan --source tavily          # specific source only
-uv run gig-ops evaluate "Odense Flower Fest" # score an event A–F
-uv run gig-ops contact "Odense Flower Fest"  # find organizer (score ≥ C only)
-uv run gig-ops mail "Odense Flower Fest"     # generate 2–3 email variants
-uv run gig-ops followup                      # list events needing follow-up
-uv run gig-ops tracker                       # open TUI dashboard
-uv run gig-ops deep "Roskilde Festival"      # deep research mode
+uv run gig-ops list                      # list all events (ID, score, status, name)
+uv run gig-ops list --status EVALUATED   # filter by status
+
+uv run gig-ops scan                      # scan all sources for new events
+uv run gig-ops scan --source tavily      # specific source only
+
+uv run gig-ops evaluate                  # evaluate all NEW events (batch)
+uv run gig-ops evaluate 42               # evaluate by ID
+uv run gig-ops evaluate "jazz"           # evaluate by partial name match
+
+uv run gig-ops contact                   # find contacts for all A/B/C events (batch)
+uv run gig-ops contact 42                # find contact by ID
+uv run gig-ops contact "jazz"            # find contact by partial name match
+
+uv run gig-ops mail "Odense Flower Fest" # generate 2–3 email variants
+uv run gig-ops followup                  # list events needing follow-up
+uv run gig-ops tracker                   # open TUI dashboard
+uv run gig-ops deep "Roskilde Festival"  # deep research mode
 uv run gig-ops suppress contact@example.dk  # add to do-not-contact list
 ```
 
@@ -50,10 +61,10 @@ uv run gig-ops suppress contact@example.dk  # add to do-not-contact list
 
 ## Data
 
-SQLite database at `data/events.db`. Mail drafts as Markdown in `data/mails/`.
+SQLite database at `data/gigs.db`. Mail drafts as Markdown in `data/mails/`.
 Both are gitignored — Dagmar's data stays local.
 
-Daily backup: `cp data/events.db data/backups/events-$(date +%Y%m%d).db`
+Daily backup: `cp data/gigs.db data/backups/gigs-$(date +%Y%m%d).db`
 
 ---
 
