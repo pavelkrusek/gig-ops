@@ -12,6 +12,7 @@ from gig_ops.settings import get_settings
 _MODE_PATH = Path(__file__).parents[2] / "modes" / "evaluate.md"
 _MODEL = "claude-haiku-4-5"
 _MODE_VERSION = "1.0"
+_MAX_RAW_CHARS = 16_000
 
 
 class _DimensionScore(BaseModel):
@@ -52,7 +53,7 @@ def evaluate_event(event_name: str, repo: Repository | None = None) -> dict[str,
         f"Event name: {event.name}\n"
         f"URL: {event.url or 'unknown'}\n"
         f"Source: {event.source or 'unknown'}\n\n"
-        f"Scraped content:\n{event.raw_scraped_text or '(no content available)'}"
+        f"Scraped content:\n{(event.raw_scraped_text or '(no content available)')[:_MAX_RAW_CHARS]}"
     )
 
     logger.info("Evaluating event: {}", event.name)
