@@ -784,7 +784,10 @@ a bottleneck.
 - **Write pytest tests for new code where it makes sense.** Keep tests basic — unit tests over logic, not
   over-engineered fixtures. Mark slow/integration tests with `@pytest.mark.slow`.
 - **Work directly in the project.** Do not create git worktrees. Edit files in place.
-- **Commit and push after each meaningful batch.** Use conventional commit prefixes: `feat`, `fix`, `chore`, `refactor`,
-  `test`, `docs`. Keep messages concise. Do not amend published commits.
+- **Never commit immediately after making changes.** Show the changes, let the user read them in the IDE, and wait for
+  explicit "commitni". Then prepare the commit and let the user approve via the tool permission UI. Use conventional
+  prefixes: `feat`, `fix`, `chore`, `refactor`, `test`, `docs`. Do not amend published commits.
 - **The user handles branching and rebase.** Do not create branches, rebase, or force-push. Commit to the current branch
   and push — that's it.
+- **Language:** Code, comments, and docstrings in English. Content config (`queries.yml`, templates, `profile.yml`) in
+  the language of the market — Danish for Danish-facing content, English where international.
