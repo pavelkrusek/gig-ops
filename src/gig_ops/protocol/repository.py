@@ -11,6 +11,7 @@ class Repository(Protocol):
         url: str | None = None,
         source: str | None = None,
         source_confidence: str | None = None,
+        raw_scraped_text: str | None = None,
     ) -> int | None: ...
 
     def set_status(self, event_id: int, new_status: str) -> None: ...

@@ -119,6 +119,7 @@ class SQLiteRepository(Repository):
             url: str | None = None,
             source: str | None = None,
             source_confidence: str | None = None,
+            raw_scraped_text: str | None = None,
     ) -> int | None:
         with db(self._db_path) as conn:
             if url and _suppressed(conn, url):
@@ -133,10 +134,11 @@ class SQLiteRepository(Repository):
             now = _now()
             cur = conn.execute(
                 """
-                INSERT INTO events (name, url, source, source_confidence, dedupe_key, status, found_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 'NEW', ?, ?)
+                INSERT INTO events (name, url, source, source_confidence, raw_scraped_text,
+                                    dedupe_key, status, found_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'NEW', ?, ?)
                 """,
-                (name, url, source, source_confidence, key, now, now),
+                (name, url, source, source_confidence, raw_scraped_text, key, now, now),
             )
             event_id: int = cur.lastrowid  # type: ignore[assignment]
             logger.info("Event added: {} (id={})", name, event_id)

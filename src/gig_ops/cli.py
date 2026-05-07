@@ -21,10 +21,15 @@ def configure(
 
 
 @app.command()
-def scan(source: str = typer.Option("all", help="Source to scan: all | tavily | crawl4ai")) -> None:
+def scan(source: str = typer.Option("tavily", help="Source to scan: tavily | all")) -> None:
     """Scan sources for new events."""
-    logger.info("Scanning source: {}", source)
-    typer.echo(f"Scanning source: {source} — not yet implemented")
+    from gig_ops.scan import run_scan
+    typer.echo(f"Scanning [{source}]…")
+    summary = run_scan(source=source)
+    typer.echo(f"Done. Added: {summary.added}, skipped (dup/suppressed): {summary.skipped}")
+    if summary.errors:
+        for e in summary.errors:
+            typer.echo(f"  Error: {e}", err=True)
 
 
 @app.command()
@@ -70,7 +75,11 @@ def deep(event_name: str = typer.Argument(..., help="Event or organizer to resea
 
 
 @app.command()
-def suppress(pattern: str = typer.Argument(..., help="Email or domain to suppress")) -> None:
+def suppress(
+    pattern: str = typer.Argument(..., help="Email or domain to suppress"),
+    reason: str = typer.Option("", "--reason", "-r", help="Optional reason"),
+) -> None:
     """Add an email or domain to the do-not-contact list."""
-    logger.info("Suppressing: {}", pattern)
-    typer.echo(f"Suppressing: {pattern} — not yet implemented")
+    from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
+    SQLiteRepository().add_suppression(pattern, reason or None)
+    typer.echo(f"Suppressed: {pattern}")
