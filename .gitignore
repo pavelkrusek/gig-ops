@@ -15,5 +15,6 @@ wheels/
 
 # Runtime data
 data/
+*.csv
 
 .screenshots

@@ -187,6 +187,43 @@ def deep(event_name: str = typer.Argument(..., help="Event or organizer to resea
 
 
 @app.command()
+def export(
+    output: str = typer.Option("gig-ops-export.csv", "--output", "-o", help="Output CSV file path"),
+) -> None:
+    """Export A/B/C events with contacts to CSV for review."""
+    import csv
+    from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
+
+    repo = SQLiteRepository()
+    rows = []
+    for status in ("EVALUATED", "CONTACT_FOUND", "MAIL_DRAFTED"):
+        for event in repo.list_events(status=status):
+            if event.score_final not in ("A", "B", "C"):
+                continue
+            contact = repo.get_contact(event.id)
+            reasoning = event.score_dimensions.get("reasoning", "") if event.score_dimensions else ""
+            rows.append({
+                "id": event.id,
+                "score": event.score_final,
+                "name": event.name,
+                "organizer_name": contact.organizer_name if contact else "",
+                "organizer_email": contact.organizer_email if contact else "",
+                "email_verified": "yes" if (contact and contact.email_domain_verified) else "",
+                "reasoning": reasoning,
+                "url": event.url or "",
+            })
+
+    rows.sort(key=lambda r: (r["score"], r["name"]))
+
+    with open(output, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["id", "score", "name", "organizer_name", "organizer_email", "email_verified", "reasoning", "url"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+    typer.echo(f"Exported {len(rows)} events → {output}")
+
+
+@app.command()
 def suppress(
         pattern: str = typer.Argument(..., help="Email or domain to suppress"),
         reason: str = typer.Option("", "--reason", "-r", help="Optional reason"),
