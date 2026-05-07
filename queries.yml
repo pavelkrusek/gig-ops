@@ -1,0 +1,9 @@
+tavily:
+  - "festival Danmark {year} underholdning"
+  - "festival Danmark {next_year} underholdning"
+  - "firmafest Fyn {year}"
+  - "firmafest Danmark {year}"
+  - "konference Odense {year}"
+  - "konference Danmark {year} underholdning"
+  - "bryllupsmesse Danmark {year}"
+  - "event messe Danmark {year} underholdning"

@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 from gig_ops.infrastructure.scanner.tavily import TavilyScanner
 from gig_ops.infrastructure.sqlite.repository import SQLiteRepository
@@ -7,19 +10,13 @@ from gig_ops.log import logger
 from gig_ops.protocol.repository import Repository
 from gig_ops.protocol.scanner import Scanner
 
+_QUERIES_PATH = Path(__file__).parents[2] / "queries.yml"
 
-def _build_queries() -> list[str]:
+
+def _build_queries(path: Path = _QUERIES_PATH) -> list[str]:
     year = datetime.now().year
-    return [
-        f"festival Danmark {year} underholdning",
-        f"festival Danmark {year + 1} underholdning",
-        f"firmafest Fyn {year}",
-        f"firmafest Danmark {year}",
-        f"konference Odense {year}",
-        f"konference Danmark {year} underholdning",
-        f"bryllupsmesse Danmark {year}",
-        f"event messe Danmark {year} underholdning",
-    ]
+    raw: list[str] = yaml.safe_load(path.read_text())["tavily"]
+    return [q.format(year=year, next_year=year + 1) for q in raw]
 
 
 @dataclass
@@ -33,6 +30,7 @@ def run_scan(
     source: str = "tavily",
     repo: Repository | None = None,
     scanner: Scanner | None = None,
+    queries: list[str] | None = None,
 ) -> ScanSummary:
     if repo is None:
         repo = SQLiteRepository()
@@ -40,7 +38,7 @@ def run_scan(
     summary = ScanSummary()
 
     if source in ("tavily", "all"):
-        _scan_with(scanner or TavilyScanner(), _build_queries(), repo, summary)
+        _scan_with(scanner or TavilyScanner(), queries if queries is not None else _build_queries(), repo, summary)
 
     logger.info("Scan done — added: {}, skipped: {}", summary.added, summary.skipped)
     return summary
