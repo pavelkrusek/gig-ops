@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    anthropic_api_key: str = Field(alias="ANTHROPIC_API_KEY")
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     tavily_api_key: str = Field(alias="TAVILY_API_KEY")
     perplexity_api_key: str | None = Field(default=None, alias="PERPLEXITY_API_KEY")
 
